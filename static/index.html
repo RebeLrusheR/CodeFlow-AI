@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeFlow-AI // Terminal Deck</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        /* Pure black background and raw terminal aesthetic */
+        body { background-color: #000000; color: #d4d4d4; }
+        .terminal-border { border: 1px solid #262626; }
+        .terminal-border-active { border: 1px solid #d97706; }
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: #000000; }
+        ::-webkit-scrollbar-thumb { background: #262626; }
+        ::-webkit-scrollbar-thumb:hover { background: #d97706; }
+    </style>
+</head>
+<body class="font-mono min-h-screen flex flex-col selection:bg-amber-500 selection:text-black">
+
+    <!-- Top System Header -->
+    <header class="border-b border-[#262626] bg-[#000000] py-3 px-6 flex justify-between items-center z-10 sticky top-0">
+        <div class="flex items-center space-x-3">
+            <span class="text-amber-500 font-bold tracking-widest">[SYS_ROOT]</span>
+            <span class="text-xs text-neutral-400">CODEFLOW-AI // KERNEL v2.4</span>
+        </div>
+        <div class="flex items-center space-x-6 text-xs">
+            <span class="text-neutral-500">BACKEND: <span class="text-amber-400">CONNECTED</span></span>
+            <span class="text-neutral-500">ENGINE: <span class="text-neutral-300">GROQ + GEMINI 3.8</span></span>
+        </div>
+    </header>
+
+    <!-- Main Grid Workspace -->
+    <main class="flex-1 max-w-[1700px] w-full mx-auto p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+
+        <!-- Left Control Column -->
+        <div class="lg:col-span-1 space-y-6">
+
+            <!-- Protocol Switcher -->
+            <div class="terminal-border bg-black rounded-none p-4">
+                <div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-3 pb-1 border-b border-[#262626]">Execution Protocols</div>
+                <div class="space-y-1">
+                    <button onclick="switchTab('build')" id="btn-build" class="w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold">
+                        <span>></span> <span>MULTI_AGENT_PIPELINE</span>
+                    </button>
+                    <button onclick="switchTab('rag')" id="btn-rag" class="w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2">
+                        <span>></span> <span>WORKSPACE_RAG</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Database Synchronization -->
+            <div class="terminal-border bg-black rounded-none p-4">
+                <div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-3 pb-1 border-b border-[#262626]">Vector Memory Store</div>
+                <button onclick="triggerEmbed()" class="w-full py-2 px-3 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs transition terminal-border flex items-center justify-center space-x-2">
+                    <span>⚡</span> <span>SYNC_PINECONE_INDEX</span>
+                </button>
+                <div id="embed-status" class="text-[11px] text-neutral-400 mt-2 text-center"></div>
+            </div>
+
+            <!-- Pipeline Status Monitor -->
+            <div class="terminal-border bg-black rounded-none p-4">
+                <div class="text-[10px] uppercase tracking-widest text-neutral-500 mb-3 pb-1 border-b border-[#262626]">Task Force Stack</div>
+                <div class="space-y-2 text-xs text-neutral-400">
+                    <div class="flex justify-between p-1.5 bg-neutral-950 border border-neutral-900">
+                        <span>[01] Architect</span>
+                        <span class="text-amber-500">ACTIVE</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 bg-neutral-950 border border-neutral-900">
+                        <span>[02] Implementer</span>
+                        <span class="text-amber-500">ACTIVE</span>
+                    </div>
+                    <div class="flex justify-between p-1.5 bg-neutral-950 border border-neutral-900">
+                        <span>[03] Reviewer</span>
+                        <span class="text-emerald-500">ONLINE</span>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Terminal Output Area -->
+        <div class="lg:col-span-3 terminal-border bg-black rounded-none p-6 flex flex-col min-h-[750px]">
+
+            <!-- BUILD INTERFACE -->
+            <div id="tab-build" class="flex-1 flex flex-col space-y-4">
+                <div class="border-b border-[#262626] pb-3">
+                    <h2 class="text-xs uppercase tracking-widest text-amber-500 font-bold">// MULTI-AGENT TASK FORCE DEPLOYMENT</h2>
+                    <p class="text-[11px] text-neutral-500 mt-1">Direct Groq & Gemini multi-model coordination layer.</p>
+                </div>
+
+                <div class="relative">
+                    <textarea id="task-input" rows="3" class="w-full bg-black terminal-border p-4 text-neutral-200 focus:outline-none focus:border-amber-500 text-xs resize-none" placeholder="Enter system directive (e.g., Build a low-latency multi-threaded TCP proxy in Python...)"></textarea>
+                    <button onclick="runBuild()" id="build-btn" class="absolute bottom-3 right-3 px-4 py-1.5 bg-amber-600 hover:bg-amber-500 text-black text-xs font-bold transition">
+                        EXECUTE_TASK
+                    </button>
+                </div>
+
+                <div id="loading" class="hidden my-12 text-center text-xs text-amber-500 animate-pulse">
+                    > [PROCESSING]: Architect compiling plan ➔ Implementer generating source code ➔ Reviewer auditing security...
+                </div>
+
+                <div id="results-container" class="mt-4 space-y-6 hidden flex-1 flex flex-col">
+                    <div class="flex-1 flex flex-col">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="text-[10px] uppercase tracking-widest text-neutral-500">[OUTPUT_SOURCE_CODE]</span>
+                            <button onclick="navigator.clipboard.writeText(document.getElementById('impl-output').innerText)" class="text-[10px] text-neutral-400 hover:text-white bg-neutral-900 border border-neutral-800 px-2 py-0.5">COPY</button>
+                        </div>
+                        <div class="bg-neutral-950 terminal-border p-4 text-xs overflow-x-auto max-h-[350px] text-neutral-300" id="impl-output"></div>
+                    </div>
+
+                    <div class="flex-1 flex flex-col">
+                        <span class="text-[10px] uppercase tracking-widest text-neutral-500 mb-1">[AUDIT_REPORT_V1]</span>
+                        <div class="bg-neutral-950 terminal-border p-4 text-xs text-neutral-300 overflow-y-auto max-h-[300px] font-sans" id="review-output"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG INTERFACE -->
+            <div id="tab-rag" class="flex-1 flex flex-col space-y-4 hidden">
+                <div class="border-b border-[#262626] pb-3">
+                    <h2 class="text-xs uppercase tracking-widest text-amber-500 font-bold">// WORKSPACE VECTOR DATABASE QUERY</h2>
+                    <p class="text-[11px] text-neutral-500 mt-1">Perform direct similarity searches against Pinecone index clusters.</p>
+                </div>
+
+                <div class="flex space-x-2">
+                    <input type="text" id="rag-input" class="flex-1 bg-black terminal-border px-4 text-neutral-200 focus:outline-none focus:border-amber-500 text-xs" placeholder="Query code context (e.g., Where is the Langfuse observer initialized?)">
+                    <button onclick="runRag()" class="px-6 py-2.5 bg-amber-600 hover:bg-amber-500 text-black text-xs font-bold transition">QUERY_VECTORS</button>
+                </div>
+
+                <div id="rag-loading" class="hidden my-12 text-center text-xs text-amber-500 animate-pulse">
+                    > [VECTOR_SEARCH]: Scanning Pinecone index chunks...
+                </div>
+
+                <div id="rag-result-container" class="mt-4 hidden flex-1 bg-neutral-950 terminal-border p-5 text-xs overflow-y-auto max-h-[500px] text-neutral-300 leading-relaxed">
+                    <div id="rag-output"></div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Script Controllers -->
+    <script>
+        function switchTab(tab) {
+            if (tab === 'build') {
+                document.getElementById('tab-build').classList.remove('hidden');
+                document.getElementById('tab-rag').classList.add('hidden');
+                document.getElementById('btn-build').className = "w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold";
+                document.getElementById('btn-rag').className = "w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2";
+            } else {
+                document.getElementById('tab-build').classList.add('hidden');
+                document.getElementById('tab-rag').classList.remove('hidden');
+                document.getElementById('btn-rag').className = "w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold";
+                document.getElementById('btn-build').className = "w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2";
+            }
+        }
+
+        async function runBuild() {
+            const taskInput = document.getElementById('task-input');
+            const task = taskInput.value.trim();
+            if (!task) return;
+
+            // Clear input immediately if user typed exit/clear
+            if (task.toLowerCase() === 'exit' || task.toLowerCase() === 'clear') {
+                taskInput.value = '';
+                document.getElementById('results-container').classList.add('hidden');
+                return;
+            }
+
+            document.getElementById('loading').classList.remove('hidden');
+            document.getElementById('results-container').classList.add('hidden');
+            document.getElementById('build-btn').disabled = true;
+
+            try {
+                const response = await fetch('/api/build', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ task })
+                });
+                const data = await response.json();
+
+                document.getElementById('impl-output').innerText = data.implementation;
+                document.getElementById('review-output').innerHTML = marked.parse(data.review);
+
+                document.getElementById('results-container').classList.remove('hidden');
+            } catch (err) {
+                alert('Execution error: ' + err);
+            } finally {
+                document.getElementById('loading').classList.add('hidden');
+                document.getElementById('build-btn').disabled = false;
+            }
+        }
+
+        async function runRag() {
+            const question = document.getElementById('rag-input').value.trim();
+            if (!question) return;
+
+            document.getElementById('rag-loading').classList.remove('hidden');
+            document.getElementById('rag-result-container').classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/query`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ question })
+                });
+                const data = await response.json();
+
+                document.getElementById('rag-output').innerText = data.answer;
+                document.getElementById('rag-result-container').classList.remove('hidden');
+            } catch (err) {
+                alert('Memory query error: ' + err);
+            } finally {
+                document.getElementById('rag-loading').classList.add('hidden');
+            }
+        }
+
+        async function triggerEmbed() {
+            const statusEl = document.getElementById('embed-status');
+            statusEl.innerText = "[Syncing...]";
+            try {
+                const res = await fetch('/api/embed', { method: 'POST' });
+                const data = await res.json();
+                statusEl.innerText = "[" + data.status + "]";
+            } catch (err) {
+                statusEl.innerText = "[Sync failed]";
+            }
+        }
+    </script>
+</body>
+</html>
