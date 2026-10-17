@@ -2,15 +2,17 @@
 
 [![CodeFlow-AI Pipeline](https://github.com/RebeLrusheR/CodeFlow-AI/actions/workflows/python-app.yml/badge.svg)](https://github.com/RebeLrusheR/CodeFlow-AI/actions/workflows/python-app.yml)
 
-A high-speed, multimodal local developer assistant and autonomous RAG agent designed to streamline coding workflows, manage workspace memory, and bridge local development with cloud intelligence.
+A high-speed, multimodal local developer assistant and autonomous RAG agent designed to streamline coding workflows, manage workspace memory, and bridge local development with cloud intelligence via the Model Context Protocol (MCP).
 
 ---
 
 ## 🛠️ Tech Stack & Architecture
 
-- **LLM Routing:** Groq (`openai/gpt-oss-120b`) for ultra-fast natural language intent parsing.
-- **Embeddings & Analysis:** Google Gemini (`gemini-embedding-001` & `gemini-1.5-flash`) for vector embeddings and deep code analysis.
+- **LLM Routing & Implementation:** Groq (`openai/gpt-oss-120b` for routing, `llama3-70b-8192` for multi-agent planning/coding).
+- **Embeddings & Code Review:** Google Gemini (`text-embedding-004` & `gemini-3.8-flash`) via the updated `google-genai` SDK.
 - **Vector Memory (RAG):** Pinecone (Serverless) for long-term workspace indexing and code chunk retrieval.
+- **Dynamic Tooling:** Model Context Protocol (MCP) for asynchronous local tool discovery and execution.
+- **Observability:** Langfuse for real-time production tracing of agent steps, latency, and token usage.
 - **Integrations:** Two-way Discord Bot (`discord.py`) and GitHub API integration for issue scouting.
 - **Web Scraping:** DuckDuckGo Search (`ddgs`) for real-time web lookups.
 
@@ -18,10 +20,12 @@ A high-speed, multimodal local developer assistant and autonomous RAG agent desi
 
 ## ✨ Key Features
 
+- **🤖 Polyglot Multi-Agent Task Force:** Trigger the `build` command to launch an asynchronous workflow where a Groq Architect plans the architecture, a Groq Implementer writes the code, and a Gemini Senior Reviewer audits it for bugs.
+- **🔌 Model Context Protocol (MCP):** Connects to a local FastMCP server (`local_mcp_server.py`) to discover and execute local environment tools dynamically without hardcoding them into the router.
 - **🧠 Workspace RAG Memory:** Automatically chunks, embeds, and indexes your local codebase into Pinecone so you can query your project architecture in plain English.
+- **👀 Complete Observability:** Every API call, retrieval operation, and multi-agent workflow is fully traced and monitored on your Langfuse dashboard.
 - **💬 Two-Way Discord Integration:** Interact with your assistant via Discord webhooks and mentions (`@Jarvis`) with automatic message sanitization.
-- **🛰️ GitHub Issue Scout:** Fetch and filter open GitHub issues by keywords and target difficulty (`easy`, `medium`, `hard`).
-- **⚙️ Natural Language Automation:** Seamlessly maps conversational prompts to desktop actions, web searches, media playback, and code execution.
+- **🛰️ GitHub Issue Scout:** Fetch and filter open GitHub issues by keywords and target difficulty.
 
 ---
 
@@ -36,9 +40,17 @@ python -m venv .venv
 source .venv/bin/activate  # On Windows use: .venv\Scripts\activate
 pip install -r requirements.txt
 
+# AI APIs
 GEMINI_API_KEY=your_gemini_api_key
 GROQ_API_KEY=your_groq_api_key
+
+# Databases & Observability
 PINECONE_API_KEY=your_pinecone_api_key
+LANGFUSE_SECRET_KEY=your_langfuse_secret
+LANGFUSE_PUBLIC_KEY=your_langfuse_public
+LANGFUSE_HOST=[https://cloud.langfuse.com](https://cloud.langfuse.com)
+
+# Integrations
 DISCORD_BOT_TOKEN=your_discord_bot_token
 DISCORD_WEBHOOK_URL=your_discord_webhook_url
 GITHUB_TOKEN=your_github_token
