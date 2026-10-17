@@ -1,5 +1,7 @@
 # 🚀 CodeFlow-AI
 
+[![CodeFlow-AI Pipeline](https://github.com/RebeLrusheR/CodeFlow-AI/actions/workflows/python-app.yml/badge.svg)](https://github.com/RebeLrusheR/CodeFlow-AI/actions/workflows/python-app.yml)
+
 A high-speed, multimodal local developer assistant and autonomous RAG agent designed to streamline coding workflows, manage workspace memory, and bridge local development with cloud intelligence.
 
 ---
