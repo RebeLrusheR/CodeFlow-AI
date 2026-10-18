@@ -47,6 +47,13 @@
                     <button onclick="switchTab('rag')" id="btn-rag" class="w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2">
                         <span>></span> <span>WORKSPACE_RAG</span>
                     </button>
+                    <button onclick="switchTab('scout')" id="btn-scout" class="w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2">
+                        <span>></span> <span>GIT_SCOUT_AUTONOMY</span>
+                    </button>
+                    <!-- NEW CHAT PROTOCOL BUTTON -->
+                    <button onclick="switchTab('chat')" id="btn-chat" class="w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2">
+                        <span>></span> <span>STANDARD_CHAT</span>
+                    </button>
                 </div>
             </div>
 
@@ -133,8 +140,55 @@
                     > [VECTOR_SEARCH]: Scanning Pinecone index chunks...
                 </div>
 
-                <div id="rag-result-container" class="mt-4 hidden flex-1 bg-neutral-950 terminal-border p-5 text-xs overflow-y-auto max-h-[500px] text-neutral-300 leading-relaxed">
+                <div id="rag-result-container" class="mt-4 hidden flex-1 bg-neutral-950 terminal-border p-5 text-xs overflow-y-auto max-h-[500px] text-neutral-300 leading-relaxed font-sans">
                     <div id="rag-output"></div>
+                </div>
+            </div>
+
+            <!-- SCOUT INTERFACE -->
+            <div id="tab-scout" class="flex-1 flex flex-col space-y-4 hidden">
+                <div class="border-b border-[#262626] pb-3">
+                    <h2 class="text-xs uppercase tracking-widest text-emerald-500 font-bold">// AUTONOMOUS GITHUB SCOUT</h2>
+                    <p class="text-[11px] text-neutral-500 mt-1">Search for issues, clone repos, and generate PRs autonomously.</p>
+                </div>
+
+                <div class="flex space-x-2 mb-4">
+                    <button onclick="triggerScoutAction('scout')" class="flex-1 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs terminal-border transition">START SCOUTING</button>
+                    <button onclick="triggerScoutAction('local')" class="flex-1 py-2 bg-neutral-900 hover:bg-neutral-800 text-neutral-300 text-xs terminal-border transition">PROCESS LOCAL REPOS</button>
+                </div>
+
+                <div id="scout-gate" class="hidden terminal-border p-4 bg-amber-950/20 mb-4 border-amber-500">
+                    <p class="text-xs text-amber-400 mb-3 font-bold">🚨 HUMAN APPROVAL REQUIRED FOR PR</p>
+                    <div class="flex space-x-3">
+                        <button onclick="triggerScoutAction('approve')" class="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 text-black text-xs font-bold transition">!APPROVE</button>
+                        <button onclick="triggerScoutAction('reject')" class="px-6 py-2 bg-red-600 hover:bg-red-500 text-white text-xs font-bold transition">!REJECT</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CONVERSATIONAL CHAT INTERFACE -->
+            <div id="tab-chat" class="flex-1 flex flex-col space-y-4 hidden h-full">
+                <div class="border-b border-[#262626] pb-3">
+                    <h2 class="text-xs uppercase tracking-widest text-blue-500 font-bold">// STANDARD CHAT INTERFACE</h2>
+                    <p class="text-[11px] text-neutral-500 mt-1">Live web-grounded conversational channel.</p>
+                </div>
+
+                <!-- Chat History Window -->
+                <div id="chat-messages" class="flex-1 bg-neutral-950 terminal-border p-4 overflow-y-auto space-y-4 max-h-[520px] min-h-[400px]">
+                    <div class="flex items-start space-x-3">
+                        <span class="text-xs font-bold text-blue-400 select-none">[JARVIS]</span>
+                        <div class="text-xs text-neutral-300 bg-neutral-900/80 p-3 rounded-sm border border-neutral-800 leading-relaxed max-w-[85%]">
+                            Systems online. Ask me anything, or query current events with real-time web retrieval.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat Input Row -->
+                <div class="flex space-x-2 pt-2">
+                    <input type="text" id="chat-input" class="flex-1 bg-black terminal-border px-4 py-2.5 text-neutral-200 focus:outline-none focus:border-blue-500 text-xs" placeholder="Ask anything (e.g., What happened with Iran today?)...">
+                    <button onclick="sendChat()" id="chat-btn" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold transition">
+                        SEND
+                    </button>
                 </div>
             </div>
 
@@ -144,16 +198,42 @@
     <!-- Script Controllers -->
     <script>
         function switchTab(tab) {
-            if (tab === 'build') {
-                document.getElementById('tab-build').classList.remove('hidden');
-                document.getElementById('tab-rag').classList.add('hidden');
-                document.getElementById('btn-build').className = "w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold";
-                document.getElementById('btn-rag').className = "w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2";
-            } else {
-                document.getElementById('tab-build').classList.add('hidden');
-                document.getElementById('tab-rag').classList.remove('hidden');
-                document.getElementById('btn-rag').className = "w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold";
-                document.getElementById('btn-build').className = "w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2";
+            // Hide all tabs
+            document.getElementById('tab-build').classList.add('hidden');
+            document.getElementById('tab-rag').classList.add('hidden');
+            document.getElementById('tab-scout').classList.add('hidden');
+            document.getElementById('tab-chat').classList.add('hidden');
+
+            // Reset all buttons to default styling
+            const defaultBtnClass = "w-full text-left px-3 py-2 bg-transparent text-neutral-400 hover:text-neutral-200 border border-transparent text-xs transition flex items-center space-x-2";
+            const activeBtnClass = "w-full text-left px-3 py-2 bg-amber-500/10 text-amber-400 border border-amber-500/40 text-xs transition flex items-center space-x-2 font-bold";
+
+            document.getElementById('btn-build').className = defaultBtnClass;
+            document.getElementById('btn-rag').className = defaultBtnClass;
+            document.getElementById('btn-scout').className = defaultBtnClass;
+            document.getElementById('btn-chat').className = defaultBtnClass;
+
+            // Show selected tab and activate its button
+            document.getElementById(`tab-${tab}`).classList.remove('hidden');
+            document.getElementById(`btn-${tab}`).className = activeBtnClass;
+        }
+
+        async function triggerScoutAction(action) {
+            try {
+                const response = await fetch('/api/scout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: action })
+                });
+                const data = await response.json();
+                console.log("Scout Action Triggered:", data);
+
+                // Hide the approval gate if we just clicked approve or reject
+                if (action === 'approve' || action === 'reject') {
+                    document.getElementById('scout-gate').classList.add('hidden');
+                }
+            } catch (err) {
+                alert("Failed to connect to backend: " + err);
             }
         }
 
@@ -162,7 +242,6 @@
             const task = taskInput.value.trim();
             if (!task) return;
 
-            // Clear input immediately if user typed exit/clear
             if (task.toLowerCase() === 'exit' || task.toLowerCase() === 'clear') {
                 taskInput.value = '';
                 document.getElementById('results-container').classList.add('hidden');
@@ -190,11 +269,13 @@
             } finally {
                 document.getElementById('loading').classList.add('hidden');
                 document.getElementById('build-btn').disabled = false;
+                taskInput.value = '';
             }
         }
 
         async function runRag() {
-            const question = document.getElementById('rag-input').value.trim();
+            const ragInput = document.getElementById('rag-input');
+            const question = ragInput.value.trim();
             if (!question) return;
 
             document.getElementById('rag-loading').classList.remove('hidden');
@@ -208,12 +289,86 @@
                 });
                 const data = await response.json();
 
-                document.getElementById('rag-output').innerText = data.answer;
+                document.getElementById('rag-output').innerHTML = marked.parse(data.answer);
                 document.getElementById('rag-result-container').classList.remove('hidden');
             } catch (err) {
                 alert('Memory query error: ' + err);
             } finally {
                 document.getElementById('rag-loading').classList.add('hidden');
+                ragInput.value = '';
+            }
+        }
+
+        // NEW CHAT FUNCTION
+        async function sendChat() {
+            const chatInput = document.getElementById('chat-input');
+            const message = chatInput.value.trim();
+            if (!message) return;
+
+            const chatMessages = document.getElementById('chat-messages');
+
+            // 1. Append User Message
+            const userMsgEl = document.createElement('div');
+            userMsgEl.className = 'flex items-start justify-end space-x-3';
+            userMsgEl.innerHTML = `
+                <div class="text-xs text-neutral-100 bg-blue-950/40 p-3 rounded-sm border border-blue-900/60 leading-relaxed max-w-[85%]">
+                    ${message.replace(/</g, "&lt;").replace(/>/g, "&gt;")}
+                </div>
+                <span class="text-xs font-bold text-neutral-500 select-none">[YOU]</span>
+            `;
+            chatMessages.appendChild(userMsgEl);
+
+            // 2. Clear input & append Loading Bubble
+            chatInput.value = '';
+            const loadingId = 'loading-' + Date.now();
+            const loadingMsgEl = document.createElement('div');
+            loadingMsgEl.id = loadingId;
+            loadingMsgEl.className = 'flex items-start space-x-3';
+            loadingMsgEl.innerHTML = `
+                <span class="text-xs font-bold text-blue-400 select-none">[JARVIS]</span>
+                <div class="text-xs text-neutral-400 bg-neutral-900/50 p-3 rounded-sm border border-neutral-900 animate-pulse">
+                    Searching web & verifying context...
+                </div>
+            `;
+            chatMessages.appendChild(loadingMsgEl);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+
+            document.getElementById('chat-btn').disabled = true;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await response.json();
+
+                // 3. Replace loading message with formatted Markdown response
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+
+                const aiMsgEl = document.createElement('div');
+                aiMsgEl.className = 'flex items-start space-x-3';
+                aiMsgEl.innerHTML = `
+                    <span class="text-xs font-bold text-blue-400 select-none">[JARVIS]</span>
+                    <div class="text-xs text-neutral-200 bg-neutral-900/80 p-3 rounded-sm border border-neutral-800 leading-relaxed max-w-[85%] font-sans space-y-2">
+                        ${marked.parse(data.response)}
+                    </div>
+                `;
+                chatMessages.appendChild(aiMsgEl);
+            } catch (err) {
+                const loader = document.getElementById(loadingId);
+                if (loader) {
+                    loader.innerHTML = `
+                        <span class="text-xs font-bold text-red-500 select-none">[ERROR]</span>
+                        <div class="text-xs text-red-400 bg-neutral-900 p-3 border border-red-900">
+                            Failed to connect to backend: ${err}
+                        </div>
+                    `;
+                }
+            } finally {
+                document.getElementById('chat-btn').disabled = false;
+                chatMessages.scrollTop = chatMessages.scrollHeight;
             }
         }
 
@@ -228,6 +383,42 @@
                 statusEl.innerText = "[Sync failed]";
             }
         }
+
+        // --- ENTER KEY LISTENERS ---
+        document.getElementById('task-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runBuild();
+            }
+        });
+
+        document.getElementById('rag-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                runRag();
+            }
+        });
+
+        // Chat Enter Listener
+        document.getElementById('chat-input').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendChat();
+            }
+        });
+
+        // Polling loop to check for scout alerts from the backend
+        setInterval(async () => {
+            try {
+                const res = await fetch('/api/scout/status');
+                const data = await res.json();
+                if (data.pending) {
+                    document.getElementById('scout-gate').classList.remove('hidden');
+                }
+            } catch (e) {
+                // Silently fail if server is offline
+            }
+        }, 2000);
     </script>
 </body>
 </html>
