@@ -1,5 +1,6 @@
 import subprocess
 import sys
+import time
 from main import multi_agent_task_force
 
 print("==================================================")
@@ -13,11 +14,13 @@ try:
     print("Booting Web Server (api_server.py)...")
     web_proc = subprocess.Popen([sys.executable, "api_server.py"])
     processes.append(web_proc)
+    time.sleep(1)  # Pause to let the server bind silently
 
     # 2. Boot up the Discord GitScout Agent
     print("Booting GitScout (github_agent.py)...")
     agent_proc = subprocess.Popen([sys.executable, "github_agent.py"])
     processes.append(agent_proc)
+    time.sleep(2)  # Pause to let Discord connect silently
 
     print("\n✅ All systems active. Web Dashboard: http://127.0.0.1:8000")
     print("✅ Discord Bot is listening for '!start'.")
@@ -26,7 +29,7 @@ try:
     # 3. Direct Terminal Pipe to main.py
     while True:
         try:
-            user_input = input("\n[Terminal] You: ").strip()
+            user_input = input("[Terminal] You: ").strip()
         except (EOFError, KeyboardInterrupt):
             break
 
