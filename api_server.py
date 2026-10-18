@@ -11,7 +11,7 @@ from pydantic import BaseModel
 import uvicorn
 
 # Import your core agent logic from main.py
-from main import multi_agent_task_force, query_rag_memory, embed_workspace
+from main import multi_agent_task_force, query_rag_memory, embed_workspace, standard_chat
 
 app = FastAPI(title="CodeFlow-AI Web Interface", version="1.0")
 
@@ -33,6 +33,30 @@ class BuildRequest(BaseModel):
 class QueryRequest(BaseModel):
     question: str
 
+class ScoutAction(BaseModel):
+    action: str
+
+
+class ChatRequest(BaseModel):
+    message: str
+
+
+@app.post("/api/chat")
+async def api_chat(req: ChatRequest):
+    try:
+        answer = await asyncio.to_thread(standard_chat, req.message)
+        return {"response": answer}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/scout")
+async def handle_scout_action(req: ScoutAction):
+    # Write the command to a shared file that github_agent.py is watching
+    with open("scout_command.txt", "w") as f:
+        f.write(req.action)
+    return {"status": "Command forwarded to GitScout", "action": req.action}
+
 
 # Serve static frontend files from a "static" folder
 os.makedirs("static", exist_ok=True)
@@ -42,6 +66,14 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.get("/")
 def serve_frontend():
     return FileResponse("static/index.html")
+
+
+@app.get("/api/scout/status")
+async def get_scout_status():
+    if os.path.exists("scout_alert.txt"):
+        with open("scout_alert.txt", "r", encoding="utf-8") as f:
+            return {"pending": True, "message": f.read()}
+    return {"pending": False}
 
 
 @app.post("/api/build")
@@ -93,14 +125,8 @@ if __name__ == "__main__":
     server_thread = threading.Thread(target=run_server, daemon=True)
     server_thread.start()
 
-    print("\n" + "=" * 65)
-    print(" CodeFlow-AI Web Dashboard Online -> http://127.0.0.1:8000")
-    print(" Press Ctrl+C in this terminal to shut down servers.")
-    print("=" * 65 + "\n")
-
     try:
         while True:
             time.sleep(1)
     except KeyboardInterrupt:
-        print("\nCodeFlow-AI: Shutdown sequence initialized. Goodbye!")
         sys.exit(0)
