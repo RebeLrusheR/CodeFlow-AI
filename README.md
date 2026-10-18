@@ -14,6 +14,7 @@ Featuring a synchronized **3-Way Control Architecture** (Terminal, Web Dashboard
 
 ## 🛠️ Architecture Overview
 
+```text
                               +-----------------------------+
                               |   Unified User Interfaces   |
                               |  Terminal | Web UI | Discord|
@@ -28,22 +29,19 @@ Featuring a synchronized **3-Way Control Architecture** (Terminal, Web Dashboard
              +------------------------------+-------------------------------+
              |                                                              |
              v                                                              v
-             [ Fast Local Actions / OS Tools ]                         [ Multi-Agent Task Force (Iterative) ]
-
-              Native App Launching & System Control                   1. Architect (Groq Llama 3)
-
-              Media Playback & DuckDuckGo Search                      2. Vector RAG Context (Pinecone)
-
-              MCP Subprocess Server Tools                             3. Implementer (Gemini 3.8 Flash)
-                                                                      4. Senior Reviewer Audit (Gemini 3.8 Flash)
-              (Auto-corrects up to 3 attempts)
-              |
-              v
-              [ Human-in-the-Loop Approval ]
-              - Web Deck / Discord (!approve / !reject)
-              |
-              v
-              [ Autonomous GitScout PR Submission ]
+ [ Fast Local Actions / OS Tools ]                         [ Multi-Agent Task Force (Iterative) ]
+ - Native App Launching & System Control                   1. Architect (Groq Llama 3)
+ - Media Playback & DuckDuckGo Search                      2. Vector RAG Context (Pinecone)
+ - MCP Subprocess Server Tools                             3. Implementer (Gemini 3.8 Flash)
+                                                           4. Senior Reviewer Audit (Gemini 3.8 Flash)
+                                                              (Auto-corrects up to 3 attempts)
+                                                                            |
+                                                                            v
+                                                             [ Human-in-the-Loop Approval ]
+                                                             - Web Deck / Discord (!approve / !reject)
+                                                                            |
+                                                                            v
+                                                             [ Autonomous GitScout PR Submission ]
 
 ---
 
@@ -118,6 +116,7 @@ pip install -r requirements.txt
 
 cp .env.example .env
 
+Populate the .env file with your credentials:
 # ==========================================
 # Core AI Model Provider Keys
 # ==========================================
@@ -144,6 +143,8 @@ GITHUB_TOKEN=ghp_your_github_personal_access_token_here
 DISCORD_BOT_TOKEN=your_discord_bot_token_here
 DISCORD_WEBHOOK_URL=[https://discord.com/api/webhooks/](https://discord.com/api/webhooks/)...
 
+Option A: Launch Full System (Recommended)
 python start.py
 
+Interactive CLI Only
 python main.py
