@@ -3,19 +3,20 @@ import sys
 import shutil
 import asyncio
 import requests
-import discord
 import subprocess
 import time
-from github import Github
+from github import Github, Auth
 from dotenv import load_dotenv
 import logging
 import urllib.parse
 import urllib.request
 import re
 import webbrowser
+import discord
 
-# Mute noisy discord gateway debug/info logs in the terminal
-logging.getLogger("discord").setLevel(logging.WARNING)
+# Brutally silence ALL Discord logs unless it's a critical crash
+logger = logging.getLogger('discord')
+logger.setLevel(logging.CRITICAL)
 
 from main import multi_agent_task_force, embed_workspace
 
@@ -28,7 +29,10 @@ GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
 intents = discord.Intents.default()
 intents.message_content = True
 client = discord.Client(intents=intents)
-gh = Github(GITHUB_TOKEN)
+
+# Fix for the GitHub Deprecation Warning
+auth = Auth.Token(GITHUB_TOKEN)
+gh = Github(auth=auth)
 
 WORKSPACE_DIR = os.path.join(os.getcwd(), "github_workspace")
 os.makedirs(WORKSPACE_DIR, exist_ok=True)
@@ -75,8 +79,6 @@ async def poll_web_commands():
 
 @client.event
 async def on_ready():
-    print(f"Jarvis Autonomous Scout logged in as {client.user}")
-    print("Waiting for initial command via Discord (!start)...")
     client.loop.create_task(poll_web_commands())
 
 
@@ -171,12 +173,11 @@ async def present_action_menu():
             await execute_scout_workflow(local_mode=True)
 
     except asyncio.TimeoutError:
-        print("Menu timed out.")
+        pass
 
 
 def scout_and_prepare_issue():
-    print("Jarvis: Scouting GitHub for 'good first issue' in Python...")
-    query = 'label:"good first issue" language:python state:open no:assignee'
+    query = 'label:"good first issue" label:documentation state:open no:assignee'
     issues = gh.search_issues(query, sort="created", order="desc")
 
     target_issue = None
@@ -203,6 +204,7 @@ def scout_and_prepare_issue():
     subprocess.run(["git", "checkout", "-b", branch_name], cwd=repo_path, check=False)
 
     return target_issue, original_repo, repo_path
+
 
 def get_local_repo():
     """Scans the workspace for existing downloaded repos."""
@@ -235,8 +237,6 @@ async def human_approval_gate(issue_title, repo_name, proposed_patch_data):
     def check(msg):
         return msg.author != client.user and msg.content.lower() in ['!approve', '!reject']
 
-    print(f"Jarvis: Sent alert for '{issue_title}'. Awaiting Discord OR Web response...")
-
     # Create a task for Discord's wait_for
     discord_task = asyncio.create_task(client.wait_for('message', check=check, timeout=86400))
 
@@ -244,12 +244,10 @@ async def human_approval_gate(issue_title, repo_name, proposed_patch_data):
         # Loop every second to see if the Web button was clicked OR if Discord got a reply
         while not discord_task.done():
             if web_approval == "approve":
-                print("Jarvis: Approval received from Web Dashboard!")
                 discord_task.cancel()
                 if os.path.exists("scout_alert.txt"): os.remove("scout_alert.txt")
                 return True
             elif web_approval == "reject":
-                print("Jarvis: Fix rejected from Web Dashboard.")
                 discord_task.cancel()
                 if os.path.exists("scout_alert.txt"): os.remove("scout_alert.txt")
                 return False
@@ -262,17 +260,14 @@ async def human_approval_gate(issue_title, repo_name, proposed_patch_data):
         if os.path.exists("scout_alert.txt"): os.remove("scout_alert.txt")
 
         if msg.content.lower() == '!approve':
-            print("Jarvis: Approval received from Discord!")
             await msg.add_reaction("✅")
             return True
         else:
-            print("Jarvis: Fix rejected by human via Discord.")
             await msg.add_reaction("❌")
             return False
 
     except asyncio.TimeoutError:
         if os.path.exists("scout_alert.txt"): os.remove("scout_alert.txt")
-        print("Jarvis: Approval request timed out after 24 hours.")
         return False
 
 
@@ -282,17 +277,18 @@ async def execute_scout_workflow(local_mode=False):
     issue_title = "Local Enhancements"
     issue_body = "General code review and optimization."
     repo_name = "Local Workspace"
-    fork = None
+    original_repo = None
+    issue = None
 
     if not local_mode:
-        issue, fork, repo_path = await asyncio.to_thread(scout_and_prepare_issue)
+        issue, original_repo, repo_path = await asyncio.to_thread(scout_and_prepare_issue)
         if not issue:
             send_discord_webhook("⚠️ No suitable issues found on GitHub right now.")
             await present_action_menu()
             return
         issue_title = issue.title
         issue_body = issue.body
-        repo_name = fork.full_name
+        repo_name = original_repo.full_name
     else:
         repo_path = get_local_repo()
         if not repo_path:
@@ -301,12 +297,11 @@ async def execute_scout_workflow(local_mode=False):
             return
         repo_name = os.path.basename(repo_path)
 
-    print(f"Jarvis: Indexing {repo_name} into Vector Database...")
     try:
         # Assuming embed_workspace can target a specific directory
         await asyncio.to_thread(embed_workspace)
     except Exception as e:
-        print(f"Embed warning: {e}")
+        pass
 
     directive = (
         f"We are working on the repository located at '{repo_path}'. "
@@ -318,18 +313,28 @@ async def execute_scout_workflow(local_mode=False):
     is_approved = await human_approval_gate(issue_title, repo_name, ai_result)
 
     if is_approved:
-        if not local_mode and fork:
+        if not local_mode and original_repo and issue:
             try:
+                # ONLY FORK NOW THAT WE HAVE APPROVAL
+                print("Jarvis: Creating fork on your profile for PR submission...")
+                fork = await asyncio.to_thread(original_repo.create_fork)
+                await asyncio.sleep(6)  # Give GitHub a few seconds to provision the fork
+
+                # Authenticate and switch the local repo's remote to your new fork
+                fork_clone_url = fork.clone_url.replace("https://", f"https://{GITHUB_TOKEN}@")
+                subprocess.run(["git", "remote", "set-url", "origin", fork_clone_url], cwd=repo_path, check=True)
+
+                branch_name = f"fix-issue-{issue.number}"
+
                 subprocess.run(["git", "add", "."], cwd=repo_path, check=True)
                 subprocess.run(["git", "commit", "-m", f"Fix: {issue_title}"], cwd=repo_path, check=True)
-                default_branch = fork.default_branch
-                subprocess.run(["git", "push", "origin", default_branch], cwd=repo_path, check=True)
+                subprocess.run(["git", "push", "-u", "origin", branch_name], cwd=repo_path, check=True)
 
-                original_repo = gh.get_repo(fork.parent.full_name) if fork.parent else fork
-                pr = original_repo.create_pull(
+                pr = await asyncio.to_thread(
+                    original_repo.create_pull,
                     title=f"Fix: {issue_title}",
                     body="Automated fix generated by CodeFlow-AI.",
-                    head=f"{gh.get_user().login}:{default_branch}",
+                    head=f"{gh.get_user().login}:{branch_name}",
                     base=original_repo.default_branch
                 )
                 send_discord_webhook(f"✅ **Pull Request Submitted!**\n🔗 {pr.html_url}")
@@ -337,7 +342,6 @@ async def execute_scout_workflow(local_mode=False):
                 send_discord_webhook(f"❌ **PR Submission Failed.**\nError: {e}")
 
         # Cleanup logic: Delete the folder on approval
-        print(f"Jarvis: Cleaning up local workspace {repo_path}...")
         shutil.rmtree(repo_path, ignore_errors=True)
         send_discord_webhook(f"🗑️ Cleaned up local repository: `{repo_name}`")
     else:
