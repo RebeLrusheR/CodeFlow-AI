@@ -15,8 +15,6 @@ from mcp.client.stdio import stdio_client
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 from github import Github, Auth
-import discord
-from discord.ext import commands
 
 # --- LANGFUSE INTEGRATION ---
 from langfuse import observe
@@ -52,11 +50,9 @@ else:
 # --- DESKTOP & WEB CONTROL FUNCTIONS ---
 def open_url(url: str):
     webbrowser.open(url)
-    print(f"Successfully opened {url} in the browser.")
 
 
 def play_youtube(query: str):
-    print(f"\n[Jarvis Media] Finding and playing top result for: '{query}'...")
     search_url = f"https://www.youtube.com/results?search_query={query.replace(' ', '+')}"
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     try:
@@ -69,84 +65,68 @@ def play_youtube(query: str):
             top_video_id = video_ids[0]
             direct_url = f"https://www.youtube.com/watch?v={top_video_id}"
             webbrowser.open(direct_url)
-            print(f"Jarvis: Now playing -> {direct_url}")
         else:
             webbrowser.open(search_url)
     except Exception as e:
         webbrowser.open(search_url)
-        print(f"Error fetching direct video: {e}")
 
 
 def search_web(query: str):
-    print(f"\n[Jarvis Web Scraper] Searching web for: '{query}'...")
     try:
         with DDGS() as ddgs:
             results = list(ddgs.text(query, max_results=3))
         if not results:
-            print("Jarvis: No results found.")
             return
-        print("\n🔍 **Top Web Search Results:**")
         for res in results:
             print(f"   • [{res.get('title', 'No Title')}]({res.get('href', '#')})\n     {res.get('body', '')}\n")
     except Exception as e:
-        print(f"Jarvis: Scraping error: {e}")
+        pass
 
 
 def launch_app(app_name: str):
     os.system(f"start {app_name}")
-    print(f"Command issued to launch {app_name}.")
 
 
 def type_text(text: str):
     time.sleep(1)
     pyautogui.write(text, interval=0.05)
-    print(f"Successfully typed: '{text}'")
 
 
 # --- LOCAL IDE INSPECTION & PURE PYTHON TEST RUNNER ---
 def read_local_file(file_path: str):
     if not os.path.exists(file_path):
-        print(f"Jarvis: Error - File '{file_path}' does not exist.")
         return
     with open(file_path, "r", encoding="utf-8") as f:
         content = f.read()
-    print(f"\n📁 **Inspecting Code: {file_path}**\n")
     print(content)
-    print("-" * 50)
 
 
 def test_local_file(file_path: str):
     if not os.path.exists(file_path):
-        print(f"Jarvis: Error - File '{file_path}' does not exist.")
         return
-    print(f"\n[Jarvis Test Runner] Running '{file_path}' locally...")
     try:
         result = subprocess.run(["python", file_path], capture_output=True, text=True, timeout=5)
         if result.returncode == 0:
-            print(f"✅ Success! '{file_path}' executed cleanly with zero errors.")
             if result.stdout.strip():
                 print(f"Output:\n{result.stdout}")
         else:
-            print(f"❌ Execution failed. Error Traceback captured:\n{result.stderr}")
+            pass
     except subprocess.TimeoutExpired:
-        print("Jarvis: Execution timed out (possible infinite loop).")
+        pass
     except Exception as e:
-        print(f"Jarvis: Failed to run file: {e}")
+        pass
 
 
 # --- DISCORD NOTIFICATION & REMINDER SYSTEM ---
 def send_discord_alert(message: str):
     webhook_url = os.getenv("DISCORD_WEBHOOK_URL")
     if not webhook_url:
-        print("Jarvis: Error - DISCORD_WEBHOOK_URL is missing in your .env file.")
         return
     payload = {"content": f"🤖 **Jarvis Alert:** {message}"}
     try:
         requests.post(webhook_url, json=payload, timeout=5)
-        print("📤 Jarvis: Alert successfully dispatched to Discord!")
     except Exception as e:
-        print(f"Jarvis: Error sending Discord webhook: {e}")
-
+        pass
 
 def schedule_target_time_reminder(target_time_str: str, message: str):
     try:
@@ -162,10 +142,8 @@ def schedule_target_time_reminder(target_time_str: str, message: str):
             send_discord_alert(message)
 
         threading.Thread(target=target, daemon=True).start()
-        print(
-            f"⏱️ Jarvis: Reminder set for {target_time_str}! I will ping Discord in {delay_seconds // 60} minutes for: '{message}'")
     except Exception as e:
-        print(f"Jarvis: Failed to set time-based reminder.")
+        pass
 
 
 # --- ADVANCED GITHUB SCOUT ---
@@ -180,7 +158,6 @@ def scout_issues_with_filters(command_input: str):
 
     auth = Auth.Token(os.getenv("GITHUB_TOKEN"))
     g = Github(auth=auth)
-    print(f"\n[Jarvis Scout] Scouting GitHub for: '{query_part}'...\n")
 
     try:
         if "/" in query_part and " " not in query_part:
@@ -192,10 +169,9 @@ def scout_issues_with_filters(command_input: str):
         for issue in issues:
             if count >= 5: break
             if issue.pull_request: continue
-            print(f"📌 Issue #{issue.number}: {issue.title}\nURL: {issue.html_url}\n")
             count += 1
     except Exception as e:
-        print(f"Error fetching issues: {e}")
+        pass
 
 
 # --- PINECONE RAG MEMORY ---
@@ -203,11 +179,9 @@ def embed_workspace():
     """Scans the workspace, chunks code files, and uploads them to Pinecone."""
     if not pinecone_index:
         return "Pinecone API key missing."
-    print("🧠 Indexing workspace into Pinecone memory...")
 
     if not os.path.exists(WORKSPACE_DIR):
         os.makedirs(WORKSPACE_DIR)
-        print(f"Created empty workspace folder at {WORKSPACE_DIR}")
         return "Workspace folder was missing, created a new empty one."
 
     vectors = []
@@ -240,12 +214,11 @@ def embed_workspace():
                         "metadata": {"file": file, "text": chunk}
                     })
             except Exception as e:
-                print(f"Failed to read {file}: {e}")
+                pass
 
     if vectors:
         for i in range(0, len(vectors), 100):
             pinecone_index.upsert(vectors=vectors[i:i + 100])
-        print(f"✅ Successfully memorized {len(vectors)} code chunks!")
         return f"Successfully embedded {len(vectors)} chunks of code."
     return "No compatible files found in workspace to embed."
 
@@ -255,7 +228,6 @@ def query_rag_memory(question: str):
     """Searches Pinecone for the answer and uses Gemini to explain it."""
     if not pinecone_index:
         return "Pinecone API key missing."
-    print(f"🧠 Searching memory for: '{question}'...")
 
     try:
         response = gemini_client.models.embed_content(
@@ -278,7 +250,8 @@ def query_rag_memory(question: str):
 
         response = gemini_client.models.generate_content(
             model="gemini-3.8-flash",
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.2)
         )
         return response.text
     except Exception as e:
@@ -298,16 +271,16 @@ def parse_intent_with_groq(user_message: str, mcp_tools: list = None):
     Output ONLY a valid JSON array of objects in execution order. Do not output conversational text outside the JSON.
 
     Available functions:
-    - {{"action": "play_youtube", "query": "<search term>"}}
-    - {{"action": "search_web", "query": "<search term>"}}
-    - {{"action": "launch_app", "app_name": "<name>"}}
-    - {{"action": "open_url", "url": "<url>"}}
-    - {{"action": "schedule_reminder", "time_str": "<HH:MM>", "message": "<msg>"}}
-    - {{"action": "analyze_code", "file_path": "<path>"}}
-    - {{"action": "scout", "query": "<topic> [--difficulty easy/medium/hard]"}}
-    - {{"action": "embed_workspace"}}
-    - {{"action": "query_workspace", "question": "<question about my code>"}}
-    - {{"action": "chat", "response": "<conversational reply>"}}{mcp_tools_str}
+- {{"action": "play_youtube", "query": "<search term>"}}
+- {{"action": "search_web", "query": "<search term>"}}
+- {{"action": "launch_app", "app_name": "<name>"}}
+- {{"action": "open_url", "url": "<url>"}}
+- {{"action": "schedule_reminder", "time_str": "<HH:MM>", "message": "<msg>"}}
+- {{"action": "analyze_code", "file_path": "<path>"}}
+- {{"action": "scout", "query": "<topic> [--difficulty easy/medium/hard]"}}
+- {{"action": "embed_workspace"}}
+- {{"action": "query_workspace", "question": "<question about my code>"}}
+- {{"action": "chat", "response": "<conversational reply>"}}{mcp_tools_str}
     """
     try:
         completion = groq_client.chat.completions.create(
@@ -323,7 +296,6 @@ def parse_intent_with_groq(user_message: str, mcp_tools: list = None):
             response_text = response_text.strip("`").replace("json\n", "", 1)
         return json.loads(response_text)
     except Exception as e:
-        print(f"Groq Routing Error: {e}")
         return [{"action": "chat", "response": "Sir, I encountered an API routing error."}]
 
 
@@ -335,11 +307,11 @@ def analyze_large_file_with_gemini(file_path: str):
         with open(file_path, "r", encoding="utf-8") as f:
             content = f.read()
         prompt = f"Analyze this code file and provide a brief summary of its purpose and any potential bugs:\n\n{content}"
-        print(f"🧠 Passing {file_path} to Gemini API for deep analysis...")
 
         response = gemini_client.models.generate_content(
             model="gemini-3.8-flash",
-            contents=prompt
+            contents=prompt,
+            config=types.GenerateContentConfig(temperature=0.2)
         )
         return response.text
     except Exception as e:
@@ -348,13 +320,51 @@ def analyze_large_file_with_gemini(file_path: str):
 
 @observe()
 def multi_agent_task_force(task_description: str):
+    command = task_description.strip().lower()
+
+    # ==========================================
+    # 1. INTENT ROUTER: FAST LOCAL COMMANDS
+    # ==========================================
+    if command.startswith("play "):
+        song_name = task_description[5:].strip()
+        try:
+            play_youtube(song_name)
+            return {
+                "implementation": f"✅ Executed local command: Playing '{song_name}' on YouTube.",
+                "review": "N/A - Direct OS Command Executed."
+            }
+        except Exception as e:
+            return {
+                "implementation": f"❌ Failed to play song: {e}",
+                "review": "Error"
+            }
+
+    if command in ["reboot", "restart pc"]:
+        time.sleep(5)
+        os.system("shutdown /r /t 0")
+        return {
+            "implementation": "✅ Executed local command: Initiated System Reboot.",
+            "review": "N/A - Direct OS Command Executed."
+        }
+
+    # ==========================================
+    # 2. HEAVY AI PIPELINE (Iterative & Context-Aware)
+    # ==========================================
     print("\n🤖 [Multi-Agent Task Force] Assembling team...")
+
+    # FIX 3: ZERO-SHOT BLINDSPOT - Inject Pinecone memory
+    print("🧠 Fetching workspace context from Vector Memory...")
+    try:
+        rag_context = query_rag_memory(task_description)
+    except Exception as e:
+        rag_context = "No relevant workspace context found."
 
     print("📐 Architect: Drafting execution plan...")
     architect_prompt = f"""
     You are the Architect AI. Break down this task into 2-4 concrete execution steps. 
     Output ONLY a valid JSON array of strings representing the steps. Do not add markdown formatting or conversational text.
     Task: {task_description}
+    Workspace Context: {rag_context}
     """
     try:
         architect_res = groq_client.chat.completions.create(
@@ -367,44 +377,60 @@ def multi_agent_task_force(task_description: str):
             architect_res = architect_res.strip("`").replace("json\n", "", 1)
         plan = json.loads(architect_res)
     except Exception as e:
-        print(f"Architect Error: {e}")
         plan = ["Execute the requested task directly."]
 
-    print(f"📝 Plan established: {json.dumps(plan, indent=2)}")
+    # FIX 1 & 2: THE ITERATIVE LOOP & GEMINI UPGRADE
+    max_retries = 3
+    attempt = 1
+    implementer_res = ""
+    reviewer_res = "❌ REVISION NEEDED"
+    feedback = ""
 
-    print("🛠️ Implementer: Executing plan...")
-    implementer_prompt = f"""
-    You are the Implementer AI. Execute the following plan for the user's task.
-    User Task: '{task_description}'
-    Execution Plan: {plan}
+    while attempt <= max_retries and "❌ REVISION NEEDED" in reviewer_res:
+        print(f"🛠️ Implementer: Executing plan (Attempt {attempt}/{max_retries})...")
 
-    Provide the complete, working solution or code.
-    """
-    try:
-        implementer_res = groq_client.chat.completions.create(
-            model=os.getenv("GROQ_MODEL", "llama3-70b-8192"),
-            messages=[{"role": "system", "content": implementer_prompt}],
-            temperature=0.3
-        ).choices[0].message.content
-    except Exception as e:
-        implementer_res = f"Implementation Error: {e}"
+        implementer_prompt = f"""
+        You are the Implementer AI. Execute the following plan for the user's task.
+        User Task: '{task_description}'
+        Execution Plan: {plan}
+        Workspace Context: {rag_context}
+        {feedback}
 
-    print("🧐 Reviewer: Analyzing implementation for bugs and edge cases...")
-    reviewer_prompt = f"""
-    You are the Senior Reviewer AI. Review this implementation for the task '{task_description}'.
-    If it is flawless, start your response with '✅ APPROVED' and briefly state why. 
-    If there are bugs, security flaws, or missing logic, start with '❌ REVISION NEEDED' and explain the exact fixes required.
+        Provide the complete, working solution or code. Do not truncate the output.
+        """
+        try:
+            implementer_res = gemini_client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=implementer_prompt,
+                config=types.GenerateContentConfig(temperature=0.2)
+            ).text
+        except Exception as e:
+            implementer_res = f"Implementation Error: {e}"
 
-    Implementation to review:
-    {implementer_res}
-    """
-    try:
-        reviewer_res = gemini_client.models.generate_content(
-            model="gemini-3.8-flash",
-            contents=reviewer_prompt
-        ).text
-    except Exception as e:
-        reviewer_res = f"Reviewer Error: {e}"
+        print(f"🧐 Reviewer: Analyzing implementation (Attempt {attempt}/{max_retries})...")
+        reviewer_prompt = f"""
+        You are the Senior Reviewer AI. Review this implementation for the task '{task_description}'.
+        If it is flawless, start your response with '✅ APPROVED' and briefly state why. 
+        If there are bugs, syntax errors, missing files, or truncation, start with '❌ REVISION NEEDED' and explain the exact fixes required.
+
+        Implementation to review:
+        {implementer_res}
+        """
+        try:
+            reviewer_res = gemini_client.models.generate_content(
+                model="gemini-3.8-flash",
+                contents=reviewer_prompt,
+                config=types.GenerateContentConfig(temperature=0.1)
+            ).text
+        except Exception as e:
+            print(f"Reviewer API call error: {e}")
+            reviewer_res = f"Reviewer Error: {e}"
+            break
+
+        if "❌ REVISION NEEDED" in reviewer_res:
+            print("⚠️ Reviewer flagged issues. Sending feedback back to Implementer...")
+            feedback = f"\n\n[Previous Reviewer Feedback - You MUST fix these issues]:\n{reviewer_res}"
+            attempt += 1
 
     return {
         "implementation": implementer_res,
@@ -412,88 +438,51 @@ def multi_agent_task_force(task_description: str):
     }
 
 
-# --- TWO-WAY DISCORD BOT INTEGRATION ---
-intents = discord.Intents.default()
-intents.message_content = True
-bot = commands.Bot(command_prefix="!", intents=intents)
+@observe()
+def standard_chat(history: list):
+    """Conversational chat with real-time web search grounding and memory."""
+    # Get the latest user message for searching current events
+    latest_message = history[-1]['content'] if history else ""
 
+    # 1. Fetch live search context using DDGS
+    search_context = ""
+    try:
+        with DDGS() as ddgs:
+            results = list(ddgs.text(latest_message, max_results=4))
+        if results:
+            snippets = [
+                f"- {item.get('title', '')}: {item.get('body', '')} ({item.get('href', '')})"
+                for item in results
+            ]
+            search_context = "\n".join(snippets)
+    except Exception as e:
+        search_context = ""
 
-@bot.event
-async def on_ready():
-    print(f"\n🤖 Jarvis Discord Bot online as {bot.user}!")
+    # 2. Build system instructions with live search results
+    system_prompt = (
+        "You are Jarvis, an authentic and knowledgeable AI peer. "
+        "Answer questions directly, accurately, and conversationally. "
+        "You have full access to the conversation history to understand context. "
+    )
+    if search_context:
+        system_prompt += f"\n\n[Live Web Search Context for the current query]:\n{search_context}"
 
+    # 3. Compile full message payload
+    messages = [{"role": "system", "content": system_prompt}] + history
 
-@bot.event
-async def on_message(message):
-    if message.author == bot.user:
-        return
-
-    if bot.user.mentioned_in(message) or message.content.lower().startswith("jarvis"):
-        clean_msg = re.sub(r'<@!?\d+>', '', message.content).strip()
-        if clean_msg.lower().startswith("jarvis"):
-            clean_msg = clean_msg[6:].strip()
-
-        await message.channel.send("🧠 Thinking...")
-        actions = await asyncio.to_thread(parse_intent_with_groq, clean_msg)
-
-        for task in actions:
-            action = task.get("action")
-            if action == "play_youtube":
-                await asyncio.to_thread(play_youtube, task.get("query"))
-                await message.channel.send(f"🎵 Playing: `{task.get('query')}`")
-            elif action == "launch_app":
-                await asyncio.to_thread(launch_app, task.get("app_name"))
-                await message.channel.send(f"💻 Launching app: `{task.get('app_name')}`")
-            elif action == "search_web":
-                await asyncio.to_thread(search_web, task.get("query"))
-                await message.channel.send(f"🔍 Searching web for: `{task.get('query')}` (Check terminal for results)")
-            elif action == "open_url":
-                await asyncio.to_thread(open_url, task.get("url"))
-                await message.channel.send(f"🌐 Opening URL: `{task.get('url')}`")
-            elif action == "schedule_reminder":
-                await asyncio.to_thread(schedule_target_time_reminder, task.get("time_str"), task.get("message"))
-                await message.channel.send(f"⏱️ Reminder set for {task.get('time_str')}")
-            elif action == "analyze_code":
-                analysis = await asyncio.to_thread(analyze_large_file_with_gemini, task.get("file_path"))
-                await message.channel.send(f"**Gemini Analysis:**\n{analysis[:1900]}")
-            elif action == "scout":
-                await asyncio.to_thread(scout_issues_with_filters, task.get("query"))
-                await message.channel.send(
-                    f"🛰️ Scouting GitHub for: `{task.get('query')}` (Check terminal for results)")
-            elif action == "embed_workspace":
-                await message.channel.send("🧠 Indexing workspace into Pinecone memory...")
-                status = await asyncio.to_thread(embed_workspace)
-                await message.channel.send(f"✅ {status}")
-            elif action == "query_workspace":
-                answer = await asyncio.to_thread(query_rag_memory, task.get("question"))
-                await message.channel.send(f"🧠 **Workspace Memory:**\n{answer[:1900]}")
-            elif action == "chat":
-                await message.channel.send(task.get("response"))
-
-    await bot.process_commands(message)
-
-
-def run_discord_bot():
-    token = os.getenv("DISCORD_BOT_TOKEN")
-    if token:
-        bot.run(token)
-    else:
-        print("Jarvis: Warning - DISCORD_BOT_TOKEN missing. Two-way Discord bot disabled.")
-
-
-discord_thread = threading.Thread(target=run_discord_bot, daemon=True)
-discord_thread.start()
+    try:
+        completion = groq_client.chat.completions.create(
+            model=os.getenv("GROQ_MODEL", "llama3-70b-8192"),
+            messages=messages,
+            temperature=0.4
+        )
+        return completion.choices[0].message.content
+    except Exception as e:
+        return f"Chat Error: {e}"
 
 
 # --- INTERACTIVE TERMINAL LOOP (ASYNC) ---
 async def interactive_loop():
-    print("\n" + "=" * 65)
-    print(" Jarvis High-Speed Scout & AI Automation Online (MCP Ready).")
-    print(" Type natural language commands or use strict shortcuts.")
-    print(" Type 'exit' to quit.")
-    print("=" * 65 + "\n")
-
-    print("🔌 Booting MCP Client and testing server connection...")
     try:
         server_params = StdioServerParameters(
             command="python",
@@ -506,7 +495,6 @@ async def interactive_loop():
                 tools_response = await session.list_tools()
                 available_tools = tools_response.tools
                 tool_names = [tool.name for tool in available_tools]
-                print(f"✅ MCP Connection Successful! Discovered tools: {tool_names}")
 
                 while True:
                     user_command = await asyncio.to_thread(input, "Aditya: ")
@@ -515,11 +503,9 @@ async def interactive_loop():
                     if not user_command:
                         continue
                     if user_command.lower() in ['exit', 'quit']:
-                        print("Jarvis: Shutting down systems. Goodbye!")
                         break
 
                     elif user_command.lower() == 'restart':
-                        print("Jarvis: Initiating system reboot...")
                         os.execv(sys.executable, ['python'] + sys.argv)
 
                     elif user_command.lower().startswith("scout "):
@@ -530,16 +516,14 @@ async def interactive_loop():
                         await asyncio.to_thread(test_local_file, user_command[5:].strip())
                     elif user_command.lower().startswith("build "):
                         try:
-                            # PROPER THREADING FIX: This prevents the MCP connection from starving
                             result = await asyncio.to_thread(multi_agent_task_force, user_command[6:].strip())
                             print("\n" + "=" * 40 + " IMPLEMENTATION " + "=" * 40)
                             print(result["implementation"])
                             print("\n" + "=" * 40 + " CODE REVIEW " + "=" * 40)
                             print(result["review"])
                         except Exception as e:
-                            print(f"Multi-Agent Execution Failed: {e}")
+                            pass
                     else:
-                        print("Jarvis: Thinking...")
                         actions = await asyncio.to_thread(parse_intent_with_groq, user_command, available_tools)
 
                         for task in actions:
@@ -566,18 +550,17 @@ async def interactive_loop():
                                 print(f"\n🧠 **Workspace Memory:**\n{answer}")
                             elif action == "mcp_tool":
                                 tool_name = task.get("tool_name")
-                                print(f"⚙️ Requesting MCP Server to execute: {tool_name}...")
                                 result = await session.call_tool(tool_name, arguments={})
                                 print(f"Jarvis: {result.content[0].text}")
                             elif action == "chat":
                                 print(f"Jarvis: {task.get('response')}")
 
     except Exception as e:
-        print(f"❌ MCP Connection Failed: {e}")
+        pass
 
 
 if __name__ == "__main__":
     try:
         asyncio.run(interactive_loop())
     except KeyboardInterrupt:
-        print("\nJarvis: Emergency shutdown initiated.")
+        pass
